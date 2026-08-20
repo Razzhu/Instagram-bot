@@ -1,7 +1,6 @@
 from flask import Flask, jsonify
 import os
 import threading
-import sys
 import time
 import traceback
 
@@ -62,9 +61,15 @@ def start_bot():
         print(f"❌ BOT ERROR: {e}")
         traceback.print_exc()
 
-# ✅ START BOT IMMEDIATELY
+# ✅ START BOT IN DAEMON THREAD
 print("🔄 Starting Flask application...")
 
 bot_thread = threading.Thread(target=start_bot, daemon=True)
 bot_thread.start()
 print("✅ Bot thread started!")
+
+# ✅ Make sure Flask runs on the port Render expects
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    print(f"🚀 Flask running on port {port}")
+    app.run(host='0.0.0.0', port=port)
