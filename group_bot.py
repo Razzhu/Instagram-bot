@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Instagram Group Bot - ALL BUGS FIXED
-Fixes: limit error, flush error, bad file descriptor, monitor loop
+Instagram Group Bot - COMPLETE FIXED VERSION
+Fixes: limit error, flush error, thread_id -> thread_ids
 """
 
 import time
@@ -93,7 +93,8 @@ class InstagramGroupBot:
     
     def send_message(self, thread_id, message):
         try:
-            self.cl.direct_send(message, thread_id=thread_id)
+            # ✅ FIXED: Changed thread_id -> thread_ids (plural)
+            self.cl.direct_send(message, thread_ids=[thread_id])
             print(f"📤 Sent: {message[:30]}...")
             return True
         except Exception as e:
@@ -225,7 +226,6 @@ Admin (only @razzz_huu):
                 loop_count += 1
                 print(f"🔄 Loop {loop_count}: Fetching threads...")
                 
-                # ✅ FIXED: NO 'limit' parameter here
                 threads = self.cl.direct_threads()
                 print(f"🔄 Found {len(threads)} threads")
                 
@@ -233,7 +233,6 @@ Admin (only @razzz_huu):
                     thread_id = thread.id
                     users = [u.pk for u in thread.users]
                     
-                    # Check for new members
                     if thread_id not in self.known_members:
                         self.known_members[thread_id] = []
                     
