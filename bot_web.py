@@ -1,10 +1,9 @@
 from flask import Flask
 import os
 import threading
-import time
 import sys
 
-# ✅ Force stdout to flush immediately
+# ✅ Force stdout flush
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
 
 app = Flask(__name__)
@@ -18,7 +17,6 @@ def health():
     return "OK", 200
 
 def run_bot():
-    """Run the Instagram bot in background"""
     try:
         print("=" * 60)
         print("🚀 STARTING BOT THREAD...")
@@ -28,7 +26,7 @@ def run_bot():
         print("📂 Importing group_bot...")
         sys.stdout.flush()
         import group_bot
-        print("✅ group_bot imported successfully!")
+        print("✅ group_bot imported!")
         sys.stdout.flush()
         
         print("🔧 Creating bot instance...")
@@ -40,8 +38,6 @@ def run_bot():
         print("▶️ Starting bot...")
         sys.stdout.flush()
         bot.start()
-        print("✅ Bot started!")
-        sys.stdout.flush()
         
     except Exception as e:
         print(f"❌ BOT ERROR: {e}")
@@ -51,21 +47,17 @@ def run_bot():
         sys.stdout.flush()
 
 if __name__ == "__main__":
-    print("=" * 60)
-    print("🔄 STARTING FLASK APPLICATION...")
-    print("=" * 60)
+    print("🔄 Starting Flask...")
     sys.stdout.flush()
     
-    print("🔧 Creating bot thread...")
-    sys.stdout.flush()
+    # ✅ Start bot in background thread
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()
-    print(f"✅ Bot thread started! (Thread ID: {bot_thread.ident})")
+    print("✅ Bot thread started!")
     sys.stdout.flush()
     
     port = int(os.environ.get("PORT", 10000))
     print(f"🚀 Flask running on port {port}")
-    print("=" * 60)
     sys.stdout.flush()
     
     app.run(host='0.0.0.0', port=port)
