@@ -1,6 +1,7 @@
 from flask import Flask
 import os
-import sys
+import time
+import threading
 
 app = Flask(__name__)
 
@@ -12,22 +13,19 @@ def home():
 def health():
     return "OK", 200
 
-if __name__ == "__main__":
-    print("=" * 50)
-    print("🚀 STARTING BOT...")
-    print("=" * 50)
-    
-    # Run bot directly (not in thread)
+def run_bot():
+    """Run the Instagram bot in background"""
     try:
-        print("📂 Importing group_bot...")
+        print("=" * 50)
+        print("🚀 STARTING BOT...")
+        print("=" * 50)
+        
         import group_bot
-        print("✅ Imported!")
+        print("✅ group_bot imported successfully!")
         
-        print("🔧 Creating bot...")
         bot = group_bot.InstagramGroupBot()
-        print("✅ Bot created!")
+        print("✅ Bot instance created!")
         
-        print("▶️ Starting bot...")
         bot.start()
         print("✅ Bot started!")
         
@@ -35,7 +33,14 @@ if __name__ == "__main__":
         print(f"❌ Bot error: {e}")
         import traceback
         traceback.print_exc()
-        sys.exit(1)
-    
+
+# Start bot in background when app starts
+print("🔄 Starting Flask application...")
+bot_thread = threading.Thread(target=run_bot, daemon=True)
+bot_thread.start()
+print("✅ Bot thread started!")
+
+if __name__ == "__main__":
+    # This is only used when running directly (not with gunicorn)
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
