@@ -1,63 +1,99 @@
 #!/usr/bin/env python3
 """
-Instagram Group Bot - Auto Welcome, Admin Commands, Games & Moderation
+Instagram Group Bot - Full Debug Version
 """
 
-from instagrapi import Client
+import sys
 import time
+import random
 import json
 import os
-import random
-import threading
 from datetime import datetime, timedelta
+
+# Force stdout to flush immediately
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
+
+print("=" * 50)
+print("📂 GROUP_BOT.PY IS LOADING...")
+print(f"🕐 Time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+print("=" * 50)
+
+# Import instagrapi
+try:
+    print("📦 Importing instagrapi...")
+    from instagrapi import Client
+    print("✅ instagrapi imported successfully!")
+    print(f"📦 instagrapi version: {Client.__module__}")
+except ImportError as e:
+    print(f"❌ ERROR: instagrapi not installed: {e}")
+    print("📌 Add instagrapi to requirements.txt")
+    sys.exit(1)
+
+print("=" * 50)
 
 # ============ CONFIGURATION ============
 SESSION_ID = "11950490138:2e5V9aHxKAosXH:28:AYj0h54d0SaaFBpF3pUpsZOPe29TlKH8wYFA4Ic5Lg"
-
-# Admin usernames (who can use admin commands)
 ADMINS = ["razzz_huu"]
 
-# Group settings
-WELCOME_MESSAGE = "🎉 Welcome {username} to the group! Please read the rules and enjoy!"
+WELCOME_MSG = "🎉 Welcome {username} to the group!"
 RULES = """
 📋 GROUP RULES:
-1. No spam or excessive self-promotion
-2. Be respectful to all members
+1. No spam
+2. Be respectful
 3. No NSFW content
-4. Keep conversations on topic
-5. Follow admin instructions
-
-Type /help to see available commands!
+4. Type /help for commands
 """
 
-# ============ BOT CLASS ============
+print("📌 Configuration:")
+print(f"   SESSION_ID: {SESSION_ID[:20]}...")
+print(f"   ADMINS: {ADMINS}")
+print("=" * 50)
+
 class InstagramGroupBot:
     def __init__(self):
+        print("🔧 InstagramGroupBot.__init__() called")
+        print("🔧 Creating Client instance...")
+        
         self.cl = Client()
-        self.cl.set_user_agent("Mozilla/5.0 (Linux; Android 13; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.92 Mobile Safari/537.36")
+        self.cl.set_user_agent("Mozilla/5.0 (Linux; Android 13) Chrome/116.0.5845.92")
+        print("✅ Client created with user agent set")
         
         # Bot state
         self.running = True
-        self.known_members = {}
         self.warned_users = {}
         self.muted_users = {}
-        self.spam_trigger = {}
         self.scoreboard = {}
-        self.game_state = {}
         
         # Login
         try:
-            print("🔐 Logging in...")
+            print("🔐 Attempting login with session ID...")
+            print(f"🔐 Session ID: {SESSION_ID[:20]}...")
+            
             self.cl.login_by_sessionid(SESSION_ID)
             self.username = self.cl.username
-            print(f"✅ Logged in as: @{self.username}")
-            print(f"🆔 User ID: {self.cl.user_id}")
+            self.user_id = self.cl.user_id
+            
+            print(f"✅ LOGIN SUCCESSFUL!")
+            print(f"   Username: @{self.username}")
+            print(f"   User ID: {self.user_id}")
+            
+            # Get followers count
+            try:
+                followers = self.cl.user_followers(self.user_id)
+                print(f"   Followers: {followers}")
+            except:
+                print("   Followers: (could not fetch)")
+            
         except Exception as e:
-            print(f"❌ Login failed: {e}")
-            exit()
+            print(f"❌ LOGIN FAILED: {e}")
+            import traceback
+            traceback.print_exc()
+            raise e
         
-        # Load saved data
+        print("📂 Loading saved data...")
         self.load_data()
+        print("✅ Initialization complete!")
+        print("=" * 50)
     
     def load_data(self):
         try:
@@ -66,22 +102,23 @@ class InstagramGroupBot:
                     data = json.load(f)
                     self.warned_users = data.get('warned', {})
                     self.scoreboard = data.get('scores', {})
-                    self.known_members = data.get('members', {})
-                print("📂 Loaded bot data")
-        except:
-            pass
+                print(f"📂 Loaded bot data: {len(self.warned_users)} warnings, {len(self.scoreboard)} scores")
+            else:
+                print("📂 No saved data found, starting fresh")
+        except Exception as e:
+            print(f"⚠️ Error loading data: {e}")
     
     def save_data(self):
         try:
             data = {
                 'warned': self.warned_users,
-                'scores': self.scoreboard,
-                'members': self.known_members
+                'scores': self.scoreboard
             }
             with open('bot_data.json', 'w') as f:
                 json.dump(data, f)
-        except:
-            pass
+            print("💾 Data saved")
+        except Exception as e:
+            print(f"⚠️ Error saving data: {e}")
     
     def is_admin(self, username):
         return username in ADMINS or username == self.username
@@ -89,59 +126,46 @@ class InstagramGroupBot:
     def get_username(self, user_id):
         try:
             return self.cl.user_info(user_id).username
-        except:
+        except Exception as e:
+            print(f"⚠️ Could not get username for {user_id}: {e}")
             return None
     
     def send_message(self, thread_id, message):
         try:
+            print(f"📤 Sending: {message[:40]}...")
             self.cl.direct_send(message, thread_id=thread_id)
             return True
         except Exception as e:
-            print(f"❌ Failed to send: {e}")
+            print(f"❌ Send error: {e}")
             return False
     
-    def handle_join(self, thread_id, new_member_id):
-        username = self.get_username(new_member_id)
-        if not username:
-            return
-        
-        print(f"🔔 New member joined: @{username}")
-        welcome = WELCOME_MESSAGE.format(username=username)
-        self.send_message(thread_id, welcome)
-        time.sleep(1)
-        self.send_message(thread_id, RULES)
-        
-        if thread_id not in self.known_members:
-            self.known_members[thread_id] = []
-        self.known_members[thread_id].append(new_member_id)
-        self.save_data()
-    
     def handle_command(self, thread_id, user_id, username, command):
-        cmd_parts = command.split()
-        cmd = cmd_parts[0].lower()
-        args = cmd_parts[1:] if len(cmd_parts) > 1 else []
+        parts = command.split()
+        cmd = parts[0].lower()
+        args = parts[1:] if len(parts) > 1 else []
+        
+        print(f"📩 Command from @{username}: {cmd}")
         
         # ========== PUBLIC COMMANDS ==========
         if cmd == '/help':
             help_text = """
-🤖 **BOT COMMANDS:**
+🤖 **GROUP BOT COMMANDS:**
 
-**Public Commands:**
+**Public:**
 /help - Show this help
-/rules - Show group rules
-/score - Show your score
-/leaderboard - Show top players
-/trivia - Play trivia game
-/dice - Roll a dice (1-6)
-/flip - Flip a coin
+/rules - Show rules
+/dice - Roll dice
+/flip - Flip coin
+/ping - Check bot alive
+/score - Your points
+/leaderboard - Top players
 
-**Admin Commands:**
-/kick @username - Kick a user
-/warn @username - Warn a user
-/mute @username - Mute a user
-/unmute @username - Unmute a user
-/clearwarn @username - Clear warnings
-/spam [count] [message] - Spam messages (admin only)
+**Admin (only @razzz_huu):**
+/kick @username - Kick user from group
+/warn @username - Warn user
+/mute @username - Mute user
+/unmute @username - Unmute user
+/spam [count] [msg] - Spam messages
 """
             self.send_message(thread_id, help_text)
             return
@@ -150,46 +174,13 @@ class InstagramGroupBot:
             self.send_message(thread_id, RULES)
             return
         
-        elif cmd == '/score':
-            score = self.scoreboard.get(user_id, 0)
-            self.send_message(thread_id, f"🏆 @{username} your score: {score} points")
-            return
-        
-        elif cmd == '/leaderboard':
-            if not self.scoreboard:
-                self.send_message(thread_id, "No scores yet!")
-                return
-            sorted_scores = sorted(self.scoreboard.items(), key=lambda x: x[1], reverse=True)[:10]
-            leaderboard = "🏆 **LEADERBOARD**\n\n"
-            for i, (uid, score) in enumerate(sorted_scores, 1):
-                name = self.get_username(uid) or f"User {uid}"
-                leaderboard += f"{i}. @{name} - {score} points\n"
-            self.send_message(thread_id, leaderboard)
-            return
-        
-        elif cmd == '/trivia':
-            questions = [
-                {"q": "What is the capital of France?", "a": "paris"},
-                {"q": "What is 2+2?", "a": "4"},
-                {"q": "What is the largest planet?", "a": "jupiter"},
-                {"q": "What is the color of the sky?", "a": "blue"},
-                {"q": "What is the square root of 9?", "a": "3"},
-                {"q": "Which country has the most people?", "a": "china"},
-                {"q": "What is the smallest country?", "a": "vatican"},
-                {"q": "How many continents are there?", "a": "7"},
-            ]
-            q = random.choice(questions)
-            self.send_message(thread_id, f"❓ Trivia: {q['q']}\nReply with the answer!")
-            self.game_state[thread_id] = {
-                'answer': q['a'].lower(),
-                'user_id': user_id,
-                'timestamp': datetime.now()
-            }
+        elif cmd == '/ping':
+            self.send_message(thread_id, "🏓 Pong! Bot is alive!")
             return
         
         elif cmd == '/dice':
             roll = random.randint(1, 6)
-            self.send_message(thread_id, f"🎲 @{username} rolled a **{roll}**!")
+            self.send_message(thread_id, f"🎲 @{username} rolled **{roll}**!")
             self.scoreboard[user_id] = self.scoreboard.get(user_id, 0) + 1
             self.save_data()
             return
@@ -201,9 +192,26 @@ class InstagramGroupBot:
             self.save_data()
             return
         
+        elif cmd == '/score':
+            score = self.scoreboard.get(user_id, 0)
+            self.send_message(thread_id, f"🏆 @{username} has {score} points!")
+            return
+        
+        elif cmd == '/leaderboard':
+            if not self.scoreboard:
+                self.send_message(thread_id, "No scores yet!")
+                return
+            sorted_scores = sorted(self.scoreboard.items(), key=lambda x: x[1], reverse=True)[:10]
+            board = "🏆 **LEADERBOARD**\n\n"
+            for i, (uid, score) in enumerate(sorted_scores, 1):
+                name = self.get_username(uid) or f"User{uid}"
+                board += f"{i}. @{name} - {score} pts\n"
+            self.send_message(thread_id, board)
+            return
+        
         # ========== ADMIN COMMANDS ==========
         if not self.is_admin(username):
-            self.send_message(thread_id, f"❌ @{username} You don't have permission for this command")
+            self.send_message(thread_id, f"❌ @{username} Not admin!")
             return
         
         if cmd == '/kick':
@@ -214,9 +222,9 @@ class InstagramGroupBot:
             try:
                 target_id = self.cl.user_id_from_username(target)
                 self.cl.direct_thread_remove_user(thread_id, [target_id])
-                self.send_message(thread_id, f"👢 @{target} has been kicked by @{username}")
-            except:
-                self.send_message(thread_id, f"❌ Failed to kick @{target}")
+                self.send_message(thread_id, f"👢 @{target} kicked by @{username}")
+            except Exception as e:
+                self.send_message(thread_id, f"❌ Failed to kick @{target}: {e}")
             return
         
         elif cmd == '/warn':
@@ -229,28 +237,15 @@ class InstagramGroupBot:
                 self.warned_users[target_id] = self.warned_users.get(target_id, 0) + 1
                 warnings = self.warned_users[target_id]
                 self.save_data()
-                msg = f"⚠️ @{target} has been warned ({warnings}/3)"
+                msg = f"⚠️ @{target} warned ({warnings}/3)"
                 if warnings >= 3:
                     msg += "\n🔴 Auto-kicked for 3 warnings!"
                     self.cl.direct_thread_remove_user(thread_id, [target_id])
                     self.warned_users[target_id] = 0
+                    self.save_data()
                 self.send_message(thread_id, msg)
-            except:
-                self.send_message(thread_id, f"❌ User @{target} not found")
-            return
-        
-        elif cmd == '/clearwarn':
-            if not args:
-                self.send_message(thread_id, "Usage: /clearwarn @username")
-                return
-            target = args[0].replace('@', '')
-            try:
-                target_id = self.cl.user_id_from_username(target)
-                self.warned_users[target_id] = 0
-                self.save_data()
-                self.send_message(thread_id, f"✅ Cleared warnings for @{target}")
-            except:
-                self.send_message(thread_id, f"❌ User @{target} not found")
+            except Exception as e:
+                self.send_message(thread_id, f"❌ User not found: {e}")
             return
         
         elif cmd == '/mute':
@@ -263,9 +258,9 @@ class InstagramGroupBot:
                 target_id = self.cl.user_id_from_username(target)
                 mute_until = datetime.now() + timedelta(minutes=minutes)
                 self.muted_users[target_id] = mute_until
-                self.send_message(thread_id, f"🔇 @{target} muted for {minutes} minutes")
-            except:
-                self.send_message(thread_id, f"❌ User @{target} not found")
+                self.send_message(thread_id, f"🔇 @{target} muted for {minutes} min")
+            except Exception as e:
+                self.send_message(thread_id, f"❌ User not found: {e}")
             return
         
         elif cmd == '/unmute':
@@ -281,15 +276,12 @@ class InstagramGroupBot:
                 else:
                     self.send_message(thread_id, f"@{target} is not muted")
             except:
-                self.send_message(thread_id, f"❌ User @{target} not found")
+                self.send_message(thread_id, f"❌ User not found")
             return
         
         elif cmd == '/spam':
-            if not self.is_admin(username):
-                self.send_message(thread_id, f"❌ @{username} You don't have permission for this command")
-                return
             if not args:
-                self.send_message(thread_id, "Usage: /spam [count] [message] OR /spam [message]")
+                self.send_message(thread_id, "Usage: /spam [count] [message]")
                 return
             try:
                 count = int(args[0])
@@ -297,110 +289,97 @@ class InstagramGroupBot:
             except ValueError:
                 count = 5
                 message = ' '.join(args)
-            if not message:
-                message = "SPAM!"
-            self.send_message(thread_id, f"📢 ADMIN @{username} is spamming {count} messages!")
-            time.sleep(0.5)
-            for i in range(count):
-                try:
-                    self.send_message(thread_id, f"💥 {i+1}/{count}: {message}")
-                    time.sleep(0.3)
-                except:
-                    break
-            self.send_message(thread_id, f"✅ Spam complete! {count} messages sent by @{username}")
+            self.send_message(thread_id, f"📢 Admin spamming {count} messages!")
+            for i in range(min(count, 5)):
+                self.send_message(thread_id, f"💥 {i+1}/{count}: {message}")
+                time.sleep(0.3)
+            self.send_message(thread_id, "✅ Spam complete!")
             return
         
         else:
-            self.send_message(thread_id, f"❌ Unknown command: {cmd}\nType /help for available commands")
-    
-    def check_trivia(self, thread_id, user_id, message):
-        if thread_id not in self.game_state:
-            return
-        game = self.game_state[thread_id]
-        if game['answer'] in message.lower():
-            self.send_message(thread_id, f"✅ Correct! @{self.get_username(user_id)} gets a point!")
-            self.scoreboard[user_id] = self.scoreboard.get(user_id, 0) + 5
-            self.save_data()
-            del self.game_state[thread_id]
-    
-    def detect_spam(self, thread_id, user_id, username, message):
-        if user_id not in self.spam_trigger:
-            self.spam_trigger[user_id] = []
-        now = datetime.now()
-        self.spam_trigger[user_id].append(now)
-        self.spam_trigger[user_id] = [t for t in self.spam_trigger[user_id] if (now - t).seconds < 10]
-        if len(self.spam_trigger[user_id]) > 5:
-            self.send_message(thread_id, f"⚠️ @{username} Slow down! Stop spamming!")
-            self.warned_users[user_id] = self.warned_users.get(user_id, 0) + 1
-            if self.warned_users[user_id] >= 3:
-                self.send_message(thread_id, f"🚫 @{username} removed for spam!")
-                self.cl.direct_thread_remove_user(thread_id, [user_id])
-            self.save_data()
-            self.spam_trigger[user_id] = []
-    
-    def handle_message(self, thread_id, user_id, message):
-        username = self.get_username(user_id)
-        if not username:
-            return
-        if message.startswith('/'):
-            self.handle_command(thread_id, user_id, username, message)
-            return
-        self.detect_spam(thread_id, user_id, username, message)
-        if user_id in self.muted_users:
-            if datetime.now() < self.muted_users[user_id]:
-                self.send_message(thread_id, f"@{username} You are muted until {self.muted_users[user_id].strftime('%H:%M')}")
-                return
-        self.check_trivia(thread_id, user_id, message)
+            self.send_message(thread_id, f"❌ Unknown: {cmd}\nType /help")
     
     def monitor_threads(self):
         print("👀 Monitoring threads...")
+        print("=" * 50)
+        
+        known_members = {}
+        loop_count = 0
+        
         while self.running:
             try:
+                loop_count += 1
+                print(f"🔄 Loop {loop_count}: Fetching threads...")
+                
                 threads = self.cl.direct_threads(limit=20)
+                print(f"🔄 Found {len(threads)} threads")
+                
                 for thread in threads:
                     thread_id = thread.id
-                    current_members = [user.pk for user in thread.users]
-                    if thread_id not in self.known_members:
-                        self.known_members[thread_id] = []
-                    new_members = set(current_members) - set(self.known_members[thread_id])
+                    users = [u.pk for u in thread.users]
+                    usernames = [u.username for u in thread.users]
+                    
+                    # Check for new members
+                    if thread_id not in known_members:
+                        known_members[thread_id] = []
+                    
+                    new_members = set(users) - set(known_members[thread_id])
                     for member_id in new_members:
-                        if member_id != self.cl.user_id:
-                            self.handle_join(thread_id, member_id)
-                    self.known_members[thread_id] = current_members
-                self.save_data()
-                time.sleep(10)
+                        if member_id != self.user_id:
+                            username = self.get_username(member_id)
+                            if username:
+                                print(f"🔔 New member: @{username}")
+                                self.send_message(thread_id, WELCOME_MSG.format(username=username))
+                                time.sleep(1)
+                                self.send_message(thread_id, RULES)
+                    
+                    known_members[thread_id] = users
+                
+                print(f"🔄 Loop {loop_count} complete. Sleeping 15s...")
+                time.sleep(15)
+                
             except KeyboardInterrupt:
                 self.running = False
                 break
             except Exception as e:
                 print(f"⚠️ Monitor error: {e}")
+                import traceback
+                traceback.print_exc()
                 time.sleep(30)
+        
+        print("👀 Monitoring stopped")
     
     def start(self):
-        print("\n" + "="*50)
-        print(f"🤖 GROUP BOT RUNNING")
-        print(f"👤 Logged in as: @{self.username}")
+        print("\n" + "=" * 50)
+        print("🤖 GROUP BOT RUNNING")
+        print(f"👤 Bot: @{self.username}")
         print(f"👑 Admins: {', '.join(ADMINS)}")
-        print("="*50)
-        print("\n📌 Bot Features:")
-        print("  ✅ Auto-welcome new members")
-        print("  ✅ Admin commands (/kick, /warn, /mute, etc.)")
-        print("  ✅ SPAM command (/spam count message)")
-        print("  ✅ Games (/trivia, /dice, /flip)")
-        print("  ✅ Leaderboard and scoring")
-        print("  ✅ Spam detection")
-        print("="*50)
-        print("\n⚠️ Press Ctrl+C to stop the bot\n")
+        print("=" * 50)
+        print("\n📌 Commands: /help, /ping, /dice, /flip")
+        print("📌 Admin: /kick, /warn, /mute, /spam")
+        print("=" * 50)
+        print("\n⚠️ Press Ctrl+C to stop\n")
+        
         self.monitor_threads()
 
 def main():
+    print("=" * 50)
+    print("▶️ main() function called")
+    print("=" * 50)
+    
     try:
         bot = InstagramGroupBot()
         bot.start()
     except KeyboardInterrupt:
-        print("\n\n👋 Bot stopped!")
+        print("\n👋 Bot stopped by user!")
     except Exception as e:
-        print(f"\n❌ Fatal error: {e}")
+        print(f"❌ Fatal error: {e}")
+        import traceback
+        traceback.print_exc()
+
+print("=" * 50)
+print("📂 GROUP_BOT.PY LOADING COMPLETE")
+print("=" * 50)
 
 if __name__ == "__main__":
     main()
