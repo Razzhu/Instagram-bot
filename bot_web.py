@@ -46,17 +46,18 @@ def run_bot():
         traceback.print_exc()
         sys.stdout.flush()
 
+# ✅ START BOT IMMEDIATELY - NOT INSIDE if __name__ == "__main__"
+print("🔄 Starting Flask application...")
+sys.stdout.flush()
+
+bot_thread = threading.Thread(target=run_bot, daemon=True)
+bot_thread.start()
+print("✅ Bot thread started!")
+sys.stdout.flush()
+
+# ✅ Keep this for local testing
 if __name__ == "__main__":
-    print("🔄 Starting Flask...")
-    sys.stdout.flush()
-    
-    bot_thread = threading.Thread(target=run_bot, daemon=True)
-    bot_thread.start()
-    print("✅ Bot thread started!")
-    sys.stdout.flush()
-    
     port = int(os.environ.get("PORT", 10000))
     print(f"🚀 Flask running on port {port}")
     sys.stdout.flush()
-    
     app.run(host='0.0.0.0', port=port)
