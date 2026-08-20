@@ -1,3 +1,13 @@
+import os
+import sys
+
+# ✅ Force stdout to flush immediately
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
+
+print("=" * 60)
+print("📂 GROUP_BOT.PY IS LOADING...")
+print("=" * 60)
+sys.stdout.flush()
 #!/usr/bin/env python3
 """
 Instagram Group Bot - FINAL PRODUCTION VERSION
