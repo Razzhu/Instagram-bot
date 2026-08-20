@@ -5,12 +5,8 @@ import sys
 import time
 import traceback
 
-# Force stdout flush
-sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
-
 app = Flask(__name__)
 
-# Bot status
 BOT_STATUS = {
     "status": "starting",
     "message": "Initializing...",
@@ -37,21 +33,18 @@ def start_bot():
         print("=" * 60)
         print("🚀 STARTING BOT THREAD...")
         print("=" * 60)
-        sys.stdout.flush()
         
         BOT_STATUS["status"] = "importing"
         BOT_STATUS["message"] = "Importing group_bot..."
         
         import group_bot
         print("✅ group_bot imported!")
-        sys.stdout.flush()
         
         BOT_STATUS["status"] = "creating"
         BOT_STATUS["message"] = "Creating bot instance..."
         
         bot = group_bot.InstagramGroupBot()
         print("✅ Bot instance created!")
-        sys.stdout.flush()
         
         BOT_STATUS["status"] = "running"
         BOT_STATUS["message"] = "Bot is running"
@@ -68,13 +61,10 @@ def start_bot():
         
         print(f"❌ BOT ERROR: {e}")
         traceback.print_exc()
-        sys.stdout.flush()
 
 # ✅ START BOT IMMEDIATELY
 print("🔄 Starting Flask application...")
-sys.stdout.flush()
 
 bot_thread = threading.Thread(target=start_bot, daemon=True)
 bot_thread.start()
 print("✅ Bot thread started!")
-sys.stdout.flush()
