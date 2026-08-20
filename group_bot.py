@@ -1,13 +1,3 @@
-import os
-import sys
-
-# ✅ Force stdout to flush immediately
-sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
-
-print("=" * 60)
-print("📂 GROUP_BOT.PY IS LOADING...")
-print("=" * 60)
-sys.stdout.flush()
 #!/usr/bin/env python3
 """
 Instagram Group Bot - FINAL PRODUCTION VERSION
@@ -21,12 +11,16 @@ import json
 import random
 import signal
 import traceback
-from datetime import datetime, timedelta  # ✅ FIXED: timedelta imported
+from datetime import datetime, timedelta
 from collections import defaultdict
 
-print("=" * 50)
-print("🤖 GROUP BOT STARTING...")
-print("=" * 50)
+# ✅ Force stdout to flush immediately
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
+
+print("=" * 60)
+print("📂 GROUP_BOT.PY IS LOADING...")
+print("=" * 60)
+sys.stdout.flush()
 
 # ============ ENVIRONMENT VARIABLES ============
 SESSION_ID = os.environ.get("INSTAGRAM_SESSION_ID", "11950490138:2e5V9aHxKAosXH:28:AYj0h54d0SaaFBpF3pUpsZOPe29TlKH8wYFA4Ic5Lg")
