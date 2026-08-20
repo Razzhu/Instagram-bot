@@ -1,8 +1,6 @@
 {
-  "warned": {},
-  "scores": {},
-  "muted": {},
-  "members": {},
+  "threads": {},
+  "thread_state": {},
   "last_message_times": {},
   "processed_messages": [],
   "last_updated": "",
