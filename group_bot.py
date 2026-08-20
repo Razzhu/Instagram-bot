@@ -18,8 +18,8 @@ print("=" * 50)
 print("🤖 GROUP BOT STARTING...")
 print("=" * 50)
 
-# ============ ENVIRONMENT VARIABLES ============
-SESSION_ID = os.environ.get("INSTAGRAM_SESSION_ID", "")
+# ============ ENVIRONMENT VARIABLES ============ #
+SESSION_ID = "11950490138:2e5V9aHxKAosXH:28:AYj0h54d0SaaFBpF3pUpsZOPe29TlKH8wYFA4Ic5Lg"
 ADMINS = os.environ.get("INSTAGRAM_ADMINS", "razzz_huu").split(",")
 ADMINS = [a.strip() for a in ADMINS if a.strip()]
 
