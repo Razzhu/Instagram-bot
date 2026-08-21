@@ -1,3 +1,5 @@
 instagrapi
 flask
 gunicorn
+google-genai
+requests
