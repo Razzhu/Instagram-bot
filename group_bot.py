@@ -25,7 +25,7 @@ print("=" * 60)
 # ✅ Session ID - Environment or Hardcoded
 SESSION_ID = os.environ.get("INSTAGRAM_SESSION_ID", "")
 if not SESSION_ID:
-    SESSION_ID = "11950490138:eTVuFmLKKnpBt6:6:AYgXPb6Yu1gacrK69V2TBHN9FbOce1XQa3aPVb0w_A"
+    SESSION_ID = "37581081458:9b7JEQUO8cIrjh:23:AYgev3GhCxJ6NhG2SAuHFP8waJLvUtxh6D1lhiqzBQ"
     print("⚠️ Using hardcoded SESSION_ID (environment not set)")
 
 # ✅ Gemini API Key - Environment or Hardcoded
