@@ -21,7 +21,7 @@ print("=" * 60)
 # ============ ENVIRONMENT ============
 SESSION_ID = os.environ.get("INSTAGRAM_SESSION_ID", "")
 if not SESSION_ID:
-    SESSION_ID = "37581081458:9b7JEQUO8cIrjh:23:AYgev3GhCxJ6NhG2SAuHFP8waJLvUtxh6D1lhiqzBQ"
+    SESSION_ID = "11950490138:1PhLdiuxp8qA3d:26:AYgB6cwsWCBVdhLhgLe3nPeOhcUHuDkNXKpiJhsVJw"
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 if not GEMINI_API_KEY:
