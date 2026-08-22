@@ -27,7 +27,7 @@ print("=" * 60)
 # ============ ENVIRONMENT ============
 SESSION_ID = os.environ.get("INSTAGRAM_SESSION_ID", "")
 if not SESSION_ID:
-    SESSION_ID = "37581081458:zXHY1VTJaFyVGu:19:AYiocLg53LRaCvjWOInTowpFnUdz3y9NzQUbn39fYw"
+    SESSION_ID = "23395895704:NM9njVq7dxC0V1:16:AYifDVhyF75zUaFJCDzet51-QwlSoszJMs9HLGQSwg"
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 if not GROQ_API_KEY:
