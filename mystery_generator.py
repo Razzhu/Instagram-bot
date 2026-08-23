@@ -1,0 +1,618 @@
+# mystery_generator.py
+import random
+import json
+import re
+import requests
+from datetime import datetime, timedelta
+import time
+
+# Fallback mystery templates
+MYSTERY_TEMPLATES = [
+    {
+        "type": "murder",
+        "title": "The Locked Room Mystery",
+        "setting": "A locked study in an old mansion",
+        "incident": "The host was found dead in his study. The door was locked from inside.",
+        "suspects": [
+            "The Butler",
+            "The Wife",
+            "The Business Partner",
+            "The Secret Lover",
+            "The Rival"
+        ],
+        "clues": [
+            "A half-empty glass of wine on the desk",
+            "A letter with a threatening message",
+            "Footprints leading to the window",
+            "A hidden key under the rug",
+            "A deleted message on the phone",
+            "A torn photograph"
+        ],
+        "red_herrings": [
+            "The wife's suspicious behavior (she was planning a surprise party)",
+            "The business partner's secret meeting (it was unrelated)",
+            "The butler's missing time (he was getting ice)"
+        ],
+        "culprit": "The Secret Lover",
+        "motive": "Revenge for being betrayed",
+        "method": "Poisoned the wine",
+        "final_reveal": "The lover had access to the study and poisoned the wine before the host arrived."
+    },
+    {
+        "type": "missing_person",
+        "title": "The Vanishing Professor",
+        "setting": "A university campus at midnight",
+        "incident": "A professor disappeared from his office. His belongings are still there.",
+        "suspects": [
+            "The Rival Professor",
+            "The Student",
+            "The Dean",
+            "The Caretaker",
+            "The Secret Admirer"
+        ],
+        "clues": [
+            "An open window with a torn curtain",
+            "A cryptic note on the desk",
+            "A campus map with a circled location",
+            "A phone call log with an unknown number",
+            "A hidden drawer with secret documents"
+        ],
+        "red_herrings": [
+            "The student was there for extra credit (not the professor)",
+            "The rival professor was on vacation (confirmed)",
+            "The caretaker was cleaning (didn't see anything)"
+        ],
+        "culprit": "The Student",
+        "motive": "The professor discovered the student was cheating",
+        "method": "Lured the professor away with a fake meeting",
+        "final_reveal": "The student called the professor to meet at the old building, where he confronted him about the cheating."
+    },
+    {
+        "type": "stolen_object",
+        "title": "The Missing Masterpiece",
+        "setting": "A high-end art gallery",
+        "incident": "A priceless painting disappeared from the gallery vault.",
+        "suspects": [
+            "The Gallery Owner",
+            "The Security Guard",
+            "The Art Critic",
+            "The Wealthy Collector",
+            "The Ex-Employee"
+        ],
+        "clues": [
+            "A broken security camera near the vault",
+            "An employee badge left behind",
+            "A painting replaced with a forgery",
+            "A witness who saw a suspicious person",
+            "A coded message in the guest book"
+        ],
+        "red_herrings": [
+            "The security guard was asleep (didn't see anything)",
+            "The critic was writing a bad review (not the thief)",
+            "The collector offered a reward (genuine interest)"
+        ],
+        "culprit": "The Ex-Employee",
+        "motive": "Revenge for being fired",
+        "method": "Used old access codes to enter the vault",
+        "final_reveal": "The ex-employee never returned their key card and used it to steal the painting."
+    },
+    {
+        "type": "hacker",
+        "title": "The Digital Ghost",
+        "setting": "A tech company headquarters",
+        "incident": "A hacker infiltrated the company's servers and encrypted sensitive data.",
+        "suspects": [
+            "The IT Manager",
+            "The Rival Company",
+            "The Disgruntled Employee",
+            "The Freelance Hacker",
+            "The Corporate Spy"
+        ],
+        "clues": [
+            "A IP address traced to the building",
+            "A message demanding a ransom",
+            "A hidden file with suspicious code",
+            "A USB drive found in the server room",
+            "A deleted email from an unknown sender"
+        ],
+        "red_herrings": [
+            "The IT Manager's unusual login times (he was working late)",
+            "The rival company's suspicious activity (legitimate business)",
+            "The freelance hacker's past history (was hired by another company)"
+        ],
+        "culprit": "The Disgruntled Employee",
+        "motive": "Revenge for being overlooked for promotion",
+        "method": "Installed malware on the servers using a USB drive",
+        "final_reveal": "The employee was planning to expose the company's secrets after being passed over for promotion."
+    },
+    {
+        "type": "secret_identity",
+        "title": "The Anonymous Benefactor",
+        "setting": "A charity gala event",
+        "incident": "A mysterious donor has been funding the charity, but no one knows who they are.",
+        "suspects": [
+            "The Wealthy Businessman",
+            "The Celebrity",
+            "The Politician",
+            "The Mysterious Woman",
+            "The Young Heir"
+        ],
+        "clues": [
+            "A letter with no signature",
+            "A bank transaction from an offshore account",
+            "A witness who saw someone leave quickly",
+            "A phone call made from a burner phone",
+            "A social media post that was quickly deleted"
+        ],
+        "red_herrings": [
+            "The politician was there for votes (not the donor)",
+            "The celebrity was promoting their brand (not the donor)",
+            "The businessman was negotiating a deal (not the donor)"
+        ],
+        "culprit": "The Mysterious Woman",
+        "motive": "She was the founder's secret daughter",
+        "method": "Used multiple accounts to hide her identity",
+        "final_reveal": "The mysterious woman was the founder's long-lost daughter, who wanted to support the charity anonymously."
+    },
+    {
+        "type": "betrayal",
+        "title": "The Corporate Betrayal",
+        "setting": "A high-rise office building",
+        "incident": "Confidential company secrets were leaked to a competitor.",
+        "suspects": [
+            "The CEO",
+            "The Trusted Assistant",
+            "The IT Expert",
+            "The Disgruntled Employee",
+            "The Competitor's Spy"
+        ],
+        "clues": [
+            "A suspicious email sent after hours",
+            "A USB drive found in the break room",
+            "A security camera showing someone near the server room",
+            "A deleted file from the company database",
+            "An anonymous tip received by the competitor"
+        ],
+        "red_herrings": [
+            "The CEO was meeting with the competitor (for a merger)",
+            "The assistant was working late (covering for the CEO)",
+            "The IT expert was updating the system (not stealing data)"
+        ],
+        "culprit": "The Trusted Assistant",
+        "motive": "Blackmailed by the competitor",
+        "method": "Copied files to a USB drive during late hours",
+        "final_reveal": "The assistant was being blackmailed by the competitor with a personal secret."
+    }
+]
+
+class MysteryGenerator:
+    def __init__(self, groq_api_key=None):
+        self.groq_api_key = groq_api_key
+        self.fallback_templates = MYSTERY_TEMPLATES
+    
+    def generate_mystery(self, thread_id, members, difficulty="hard"):
+        """Generate a complete mystery event"""
+        # Try Groq first
+        if self.groq_api_key:
+            try:
+                mystery = self._generate_with_groq(members, difficulty)
+                if mystery:
+                    print(f"[MYSTERY] Successfully generated mystery with Groq")
+                    return mystery
+            except Exception as e:
+                print(f"[MYSTERY] Groq generation failed: {e}")
+        
+        # Use fallback
+        print(f"[MYSTERY] Using fallback mystery template")
+        return self._generate_fallback(members, difficulty)
+    
+    def _generate_with_groq(self, members, difficulty):
+        """Generate mystery using Groq AI"""
+        if not self.groq_api_key:
+            return None
+        
+        # Select random real members for suspects
+        suspect_count = min(5, len(members))
+        selected_members = random.sample(members, suspect_count)
+        
+        prompt = f"""Generate a detailed interactive mystery for an Instagram group chat.
+
+Members of the GC: {', '.join(selected_members)}
+
+Difficulty: {difficulty.upper()}
+
+Generate a mystery where these members are the suspects. Create fictional roles around them.
+
+Format EXACTLY as follows:
+
+TITLE: [Mystery title]
+TYPE: [murder/missing_person/stolen_object/hacker/secret_identity/betrayal]
+SETTING: [Location description]
+INCIDENT: [What happened]
+DIFFICULTY: [easy/medium/hard/insane]
+
+SUSPECTS:
+[For each member, create a fictional role]
+[member1] - [role]
+[member2] - [role]
+[member3] - [role]
+[member4] - [role]
+[member5] - [role]
+
+MOTIVES:
+[List of possible motives]
+
+TIMELINE:
+[Key timeline events]
+
+CLUES (8-12):
+[Clue descriptions]
+
+RED_HERRINGS (3-5):
+[Red herring descriptions]
+
+TRUE_SOLUTION:
+CULPRIT: [the member who is actually guilty]
+MOTIVE: [why they did it]
+METHOD: [how they did it]
+FINAL_REVEAL: [detailed explanation]
+
+IMPORTANT: The culprit must be ONE of the suspects listed above. Make the story complex but solvable.
+
+Return ONLY the formatted data, no other text."""
+
+        try:
+            response = self._call_groq(prompt)
+            if response:
+                mystery = self._parse_mystery_response(response, selected_members)
+                if mystery:
+                    return mystery
+        except Exception as e:
+            print(f"[MYSTERY] Groq error: {e}")
+        
+        return None
+    
+    def _call_groq(self, prompt):
+        """Call Groq API"""
+        try:
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.groq_api_key}",
+                "Content-Type": "application/json"
+            }
+            data = {
+                "model": "groq/compound",  # ✅ Using groq/compound model
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.8,
+                "max_tokens": 800
+            }
+            print(f"[MYSTERY] Generating with model: groq/compound")
+            response = requests.post(url, headers=headers, json=data, timeout=45)
+            if response.status_code == 200:
+                result = response.json()
+                content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                if content:
+                    print(f"[MYSTERY] Groq response received: {len(content)} characters")
+                    return content
+                else:
+                    print(f"[MYSTERY] Empty response from Groq")
+                    return None
+            else:
+                print(f"[MYSTERY] API error: {response.status_code} - {response.text}")
+                return None
+        except requests.exceptions.Timeout:
+            print("[MYSTERY] Groq request timed out")
+            return None
+        except requests.exceptions.ConnectionError:
+            print("[MYSTERY] Groq connection error")
+            return None
+        except Exception as e:
+            print(f"[MYSTERY] API error: {e}")
+            return None
+    
+    def _parse_mystery_response(self, response, members):
+        """Parse Groq response into mystery data"""
+        try:
+            lines = response.split('\n')
+            mystery = {
+                'title': '',
+                'type': 'murder',
+                'setting': '',
+                'incident': '',
+                'difficulty': 'hard',
+                'suspects': {},
+                'motives': [],
+                'timeline': [],
+                'clues': [],
+                'red_herrings': [],
+                'culprit': '',
+                'motive': '',
+                'method': '',
+                'final_reveal': ''
+            }
+            
+            current_section = None
+            
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                
+                if line.startswith('TITLE:'):
+                    mystery['title'] = line[6:].strip()
+                elif line.startswith('TYPE:'):
+                    mystery['type'] = line[5:].strip().lower()
+                elif line.startswith('SETTING:'):
+                    mystery['setting'] = line[8:].strip()
+                elif line.startswith('INCIDENT:'):
+                    mystery['incident'] = line[9:].strip()
+                elif line.startswith('DIFFICULTY:'):
+                    mystery['difficulty'] = line[11:].strip().lower()
+                elif line.startswith('SUSPECTS:'):
+                    current_section = 'suspects'
+                elif line.startswith('MOTIVES:'):
+                    current_section = 'motives'
+                elif line.startswith('TIMELINE:'):
+                    current_section = 'timeline'
+                elif line.startswith('CLUES:'):
+                    current_section = 'clues'
+                elif line.startswith('RED_HERRINGS:'):
+                    current_section = 'red_herrings'
+                elif line.startswith('TRUE_SOLUTION:'):
+                    current_section = 'solution'
+                elif line.startswith('CULPRIT:'):
+                    mystery['culprit'] = line[9:].strip()
+                elif line.startswith('MOTIVE:'):
+                    mystery['motive'] = line[7:].strip()
+                elif line.startswith('METHOD:'):
+                    mystery['method'] = line[7:].strip()
+                elif line.startswith('FINAL_REVEAL:'):
+                    mystery['final_reveal'] = line[13:].strip()
+                elif line.startswith('-') or line.startswith('•') or line.startswith('*') or line.startswith('1.') or line.startswith('2.') or line.startswith('3.') or line.startswith('4.') or line.startswith('5.'):
+                    # List items
+                    item = line.lstrip('-•* 1234567890.').strip()
+                    if current_section == 'suspects':
+                        # Parse suspect format: "username - role"
+                        if ' - ' in item:
+                            name, role = item.split(' - ', 1)
+                            mystery['suspects'][name.strip()] = role.strip()
+                        elif ':' in item:
+                            name, role = item.split(':', 1)
+                            mystery['suspects'][name.strip()] = role.strip()
+                        else:
+                            # If no separator, assign a default role
+                            if len(mystery['suspects']) < len(members):
+                                mystery['suspects'][item] = f"Suspect {len(mystery['suspects']) + 1}"
+                    elif current_section == 'motives':
+                        mystery['motives'].append(item)
+                    elif current_section == 'timeline':
+                        mystery['timeline'].append(item)
+                    elif current_section == 'clues':
+                        mystery['clues'].append(item)
+                    elif current_section == 'red_herrings':
+                        mystery['red_herrings'].append(item)
+            
+            # Validate we have what we need
+            if not mystery['title'] or not mystery['suspects']:
+                print(f"[MYSTERY] Parse failed: Missing title or suspects")
+                return None
+            
+            # Ensure we have at least 2 suspects
+            if len(mystery['suspects']) < 2:
+                print(f"[MYSTERY] Parse failed: Not enough suspects")
+                return None
+            
+            # Ensure enough clues
+            if len(mystery['clues']) < 5:
+                print(f"[MYSTERY] Adding fallback clues")
+                mystery['clues'] = self._generate_fallback_clues(mystery['type'])
+            
+            # Ensure culprit is in suspects
+            if mystery['culprit'] not in mystery['suspects']:
+                print(f"[MYSTERY] Culprit not in suspects, assigning randomly")
+                mystery['culprit'] = random.choice(list(mystery['suspects'].keys()))
+            
+            print(f"[MYSTERY] Successfully parsed mystery: {mystery['title']}")
+            return mystery
+            
+        except Exception as e:
+            print(f"[MYSTERY] Parse error: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def _generate_fallback_clues(self, mystery_type):
+        """Generate fallback clues for a mystery type"""
+        clue_sets = {
+            'murder': [
+                "A bloodstained handkerchief was found near the scene",
+                "The victim had a secret meeting scheduled that night",
+                "A witness heard an argument coming from the room",
+                "A mysterious phone call was traced to a burner phone",
+                "A note with a threat was discovered in the victim's pocket",
+                "The victim's last meal was found to be poisoned",
+                "A torn piece of fabric was caught on the door handle",
+                "The victim's phone showed a deleted message"
+            ],
+            'missing_person': [
+                "A broken phone was found in the trash",
+                "A car was seen leaving the area late at night",
+                "A secret meeting was planned on the victim's calendar",
+                "A voicemail was deleted from the victim's phone",
+                "A mysterious note was left on the victim's desk",
+                "A security camera captured a shadow entering the building",
+                "The victim's bag was found abandoned",
+                "A witness saw someone matching the victim's description"
+            ],
+            'stolen_object': [
+                "A broken lock was found on the vault door",
+                "A security video showed a brief blackout",
+                "A strange item was left behind at the scene",
+                "A known thief was seen in the area that day",
+                "A key was found missing from the security office",
+                "A coded message was discovered on a note",
+                "The alarm system was disabled",
+                "A witness saw someone acting suspiciously"
+            ],
+            'hacker': [
+                "A suspicious file was downloaded from the server",
+                "A server log showed unauthorized access at 2 AM",
+                "A hidden program was installed on the system",
+                "A message was sent anonymously from inside the network",
+                "A backdoor was created in the firewall",
+                "A password was compromised and changed",
+                "An encrypted file was found on a USB drive",
+                "The security logs were deleted"
+            ],
+            'secret_identity': [
+                "A letter with no signature was found",
+                "A bank transaction came from an offshore account",
+                "A witness saw someone leave quickly",
+                "A phone call was made from a burner phone",
+                "A social media post was quickly deleted",
+                "A hidden account was discovered",
+                "A disguise was found in a locker",
+                "A witness heard a mysterious conversation"
+            ],
+            'betrayal': [
+                "A suspicious email was sent after hours",
+                "A USB drive was found in an unusual place",
+                "A security camera showed someone near the server room",
+                "A deleted file was recovered from the database",
+                "An anonymous tip was received by the competitor",
+                "A phone call was traced to a competitor's office",
+                "A document was found with classified information",
+                "A witness saw someone copying files"
+            ]
+        }
+        return clue_sets.get(mystery_type, clue_sets['murder'])
+    
+    def _generate_fallback(self, members, difficulty):
+        """Generate a fallback mystery from templates"""
+        template = random.choice(self.fallback_templates)
+        
+        # Use real members for suspects
+        suspect_count = min(5, len(members))
+        if suspect_count < 2:
+            # Not enough members, add placeholder suspects
+            selected_members = members.copy()
+            while len(selected_members) < 5:
+                selected_members.append(f"User{len(selected_members) + 1}")
+            selected_members = selected_members[:5]
+        else:
+            selected_members = random.sample(members, suspect_count)
+        
+        # Create roles for real members
+        role_templates = [
+            "The Butler", "The Wife", "The Business Partner", 
+            "The Secret Lover", "The Rival", "The Assistant",
+            "The Witness", "The Journalist", "The Investigator",
+            "The Caretaker", "The Student", "The Teacher",
+            "The CEO", "The IT Expert", "The Security Guard",
+            "The Artist", "The Collector", "The Lawyer"
+        ]
+        
+        suspects = {}
+        for i, member in enumerate(selected_members):
+            role = role_templates[i % len(role_templates)]
+            # Make it clear this is a fictional role
+            suspects[member] = f"Fictional character: {role}"
+        
+        # Adjust difficulty
+        clue_count = {
+            'easy': 5,
+            'medium': 8,
+            'hard': 12,
+            'insane': 15
+        }.get(difficulty, 8)
+        
+        red_herring_count = {
+            'easy': 1,
+            'medium': 2,
+            'hard': 3,
+            'insane': 5
+        }.get(difficulty, 2)
+        
+        # Generate clues
+        template_clues = template.get('clues', [])
+        if len(template_clues) >= clue_count:
+            clues = random.sample(template_clues, clue_count)
+        else:
+            clues = template_clues.copy()
+            fallback_clues = self._generate_fallback_clues(template.get('type', 'murder'))
+            while len(clues) < clue_count:
+                clues.append(random.choice(fallback_clues))
+        
+        # Generate red herrings
+        template_red_herrings = template.get('red_herrings', [])
+        if len(template_red_herrings) >= red_herring_count:
+            red_herrings = random.sample(template_red_herrings, red_herring_count)
+        else:
+            red_herrings = template_red_herrings.copy()
+            while len(red_herrings) < red_herring_count:
+                red_herrings.append(f"Red herring #{len(red_herrings) + 1}")
+        
+        # Select culprit from suspects
+        culprit = random.choice(list(suspects.keys()))
+        
+        # Generate timeline if not present
+        timeline = template.get('timeline', [])
+        if not timeline:
+            timeline = [
+                f"{random.randint(1, 12):02d}:{random.randint(0, 59):02d} - Suspicious activity reported",
+                f"{random.randint(1, 12):02d}:{random.randint(0, 59):02d} - Witness saw something",
+                f"{random.randint(1, 12):02d}:{random.randint(0, 59):02d} - Key evidence discovered",
+                f"{random.randint(1, 12):02d}:{random.randint(0, 59):02d} - The incident occurred",
+                f"{random.randint(1, 12):02d}:{random.randint(0, 59):02d} - Suspect was seen leaving"
+            ]
+        
+        # Generate motives if not present
+        motives = template.get('motives', [])
+        if not motives:
+            motives = [
+                "Revenge for a past wrong",
+                "Financial gain",
+                "Jealousy",
+                "Fear of being exposed",
+                "Protecting someone"
+            ]
+        
+        return {
+            'title': template['title'],
+            'type': template.get('type', 'murder'),
+            'setting': template.get('setting', 'Unknown location'),
+            'incident': template.get('incident', 'An incident occurred.'),
+            'difficulty': difficulty,
+            'suspects': suspects,
+            'motives': motives,
+            'timeline': timeline,
+            'clues': clues,
+            'red_herrings': red_herrings,
+            'culprit': culprit,
+            'motive': template.get('motive', 'Unknown motive'),
+            'method': template.get('method', 'Unknown method'),
+            'final_reveal': template.get('final_reveal', 'The mystery remains unsolved...')
+        }
+
+# Testing function
+def test_generator():
+    """Test the mystery generator"""
+    print("🧪 Testing Mystery Generator...")
+    
+    # Test with mock members
+    mock_members = ['user1', 'user2', 'user3', 'user4', 'user5']
+    
+    generator = MysteryGenerator()
+    
+    # Test fallback generation
+    mystery = generator._generate_fallback(mock_members, 'hard')
+    print(f"✅ Generated fallback mystery: {mystery['title']}")
+    print(f"   Suspects: {list(mystery['suspects'].keys())}")
+    print(f"   Clues: {len(mystery['clues'])}")
+    print(f"   Red Herrings: {len(mystery['red_herrings'])}")
+    print(f"   Culprit: {mystery['culprit']}")
+    
+    return True
+
+if __name__ == "__main__":
+    test_generator()
